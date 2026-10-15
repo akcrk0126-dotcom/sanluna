@@ -121,5 +121,7 @@ function tick(dt){
 }
 G.tick = (n, dt)=>{ for (let i = 0; i < n; i++){ tick(dt || 1/30); G.input.endFrame(); } };
 addEventListener('beforeunload', ()=>{ G.save.armor = G.player.armor; G.writeSave(); });
-boot().catch(e=>{ console.error(e); $('ltip').textContent = '오류: ' + e.message; if (window.__showErr) window.__showErr('boot: ' + (e.stack || e.message).split('\n').slice(0, 3).join(' | ')); });
+boot().catch(e=>{ console.error(e); clearInterval(tipTimer);
+  if (e && (e.message === 'WEBGL_BLOCKED' || /WebGL/.test(e.message))){ $('lbar').parentNode.style.display = 'none'; $('ltip').innerHTML = '<b style="color:#ff8a6a;font-size:17px">브라우저가 3D 그래픽(WebGL)을 막았어요.</b><br><br>1. 브라우저 창을 <b>전부 닫았다가</b> 다시 열어 주세요. (그래픽 카드가 한 번 멈추면 브라우저가 이 사이트의 3D 를 잠시 막아요)<br>2. 그래도 안 되면 설정 → 시스템 → <b>"가능한 경우 그래픽 가속 사용"</b> 이 켜져 있는지 확인해 주세요.<br>3. 다시 들어오면 <b>그래픽: 빠름</b> 으로 시작해 주세요.'; G.cfg.quality = 0; G.saveCfg(); return; }
+  $('ltip').textContent = '오류: ' + e.message; if (window.__showErr) window.__showErr('boot: ' + (e.stack || e.message).split('\n').slice(0, 3).join(' | ')); });
 })();

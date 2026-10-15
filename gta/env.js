@@ -9,8 +9,15 @@ const E = G.env = { hour:9.5, timeScale:1/60*1, weather:'clear', w:{ cloud:.2, r
 
 E.init = ()=>{
   const q = G.cfg.quality;
-  const R = G.renderer = new THREE.WebGLRenderer({ antialias:q > 0, powerPreference:'high-performance', stencil:false, preserveDrawingBuffer:!!window.__PDB });
-  R.setPixelRatio(Math.min(devicePixelRatio, q > 0 ? 1.5 : 1)); R.setSize(innerWidth, innerHeight);
+  // 3D 그리기 판 만들기: 실패하면 더 가벼운 설정으로 다시 시도
+  let R = null; const tries = [{ antialias:q > 0, powerPreference:'high-performance' }, { antialias:false, powerPreference:'default' }, { antialias:false, powerPreference:'low-power', failIfMajorPerformanceCaveat:false, precision:'mediump' }];
+  for (const t of tries){ try { R = new THREE.WebGLRenderer(Object.assign({ stencil:false, preserveDrawingBuffer:!!window.__PDB }, t)); break; } catch(e){ console.warn('WebGL 실패', t, e); } }
+  if (!R){ const err = new Error('WEBGL_BLOCKED'); throw err; }
+  G.renderer = R;
+  R.setPixelRatio(Math.min(devicePixelRatio, q > 0 ? 1.25 : 1)); R.setSize(innerWidth, innerHeight);
+  // 그래픽 카드가 멈추면(컨텍스트 손실) 가벼운 그래픽으로 다시 시작
+  R.domElement.addEventListener('webglcontextlost', e=>{ e.preventDefault(); G.cfg.quality = 0; G.cfg.lost = (G.cfg.lost || 0) + 1; G.saveCfg(); try { G.writeSave(); } catch(_){}
+    const d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:#0a0610;color:#fff;font:700 18px sans-serif;text-align:center;padding:20px;line-height:1.7'; d.innerHTML = '그래픽 카드가 버티지 못해서 3D 화면이 꺼졌어요.<br>가벼운 그래픽으로 다시 시작할게요…'; document.body.appendChild(d); setTimeout(()=>location.reload(), 1800); }, false);
   R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1;
   R.shadowMap.enabled = true; R.shadowMap.type = q > 0 ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   G.canvas = R.domElement; G.canvas.id = 'gl'; document.body.prepend(G.canvas);
@@ -20,7 +27,7 @@ E.init = ()=>{
   // 빛
   E.hemi = new THREE.HemisphereLight(0xcfe0ff, 0x4a4438, .55); S.add(E.hemi);
   E.sun = new THREE.DirectionalLight(0xfff0dd, 2.6); E.sun.castShadow = true;
-  const sm = q > 0 ? 2048 : 1024; E.sun.shadow.mapSize.set(sm, sm); const sc = E.sun.shadow.camera; sc.left = sc.bottom = -90; sc.right = sc.top = 90; sc.near = 1; sc.far = 700; E.sun.shadow.bias = -.0004; E.sun.shadow.normalBias = .04;
+  const sm = q > 0 ? 2048 : 1024; if (G.cfg.lost >= 2) R.shadowMap.enabled = false; E.sun.shadow.mapSize.set(sm, sm); const sc = E.sun.shadow.camera; sc.left = sc.bottom = -90; sc.right = sc.top = 90; sc.near = 1; sc.far = 450; E.sun.shadow.bias = -.0004; E.sun.shadow.normalBias = .04;
   S.add(E.sun); S.add(E.sun.target);
   buildSky(); buildRain();
   // 반사용 환경맵

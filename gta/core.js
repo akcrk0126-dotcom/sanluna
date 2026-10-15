@@ -27,7 +27,7 @@ G.LOW = G.TOUCH || (innerWidth*innerHeight < 700000);
 const LS = G.LS = { get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } }, set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} } };
 
 // 그래픽 설정
-G.cfg = Object.assign({ quality:G.LOW ? 0 : 1, sens:1, invertY:false, vol:.8, radioVol:.6, fov:62 }, LS.get('sl_cfg', {}));
+G.cfg = Object.assign({ quality:0, sens:1, invertY:false, vol:.8, radioVol:.6, fov:62 }, LS.get('sl_cfg', {}));
 G.saveCfg = ()=>LS.set('sl_cfg', G.cfg);
 
 // =====================================================================

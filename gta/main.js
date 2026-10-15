@@ -68,7 +68,8 @@ function loop(now){
   dt *= G.slowmo || 1;
   const I = G.input;
   if (G.ui.wheelOn){ G.ui.wheelMouse(I.mdx, I.mdy); I.mdx = I.mdy = 0; }
-  tick(dt);
+  G._dt = dt;
+  try { tick(dt); } catch(e){ if (window.__showErr && (G.excCount = (G.excCount || 0) + 1) <= 3) window.__showErr('tick: ' + (e.stack || e.message).split('\n').slice(0, 3).join(' | ')); }
   guard();
   G.ui.update(dt);
   I.endFrame();
@@ -84,6 +85,9 @@ function guard(){ const P = G.player, C = P.cam; const f = { 'P.x':P.x, 'P.y':P.
   const bad = Object.keys(f).filter(k=>!isFinite(f[k]));
   if (!bad.length){ Object.assign(SAFE, { x:P.x, y:P.y, z:P.z, h:P.h, yaw:C.yaw, pitch:C.pitch, cx:C.x, cy:C.y, cz:C.z }); if (P.car) SAFE.car = { v:P.car, x:P.car.x, y:P.car.y, z:P.car.z, h:P.car.h }; return; }
   console.warn('[SAN LUNA] NaN 복구', bad.join(','), JSON.stringify(f));
+  const info = { car:P.inCar ? P.car.type : '-', w:P.weapon, aimK:P.aimK, st:P.stamina, slow:G.slowmo, kick:C.kick, sh:C.shake, fov:C.fov, sens:G.cfg.sens, mdx:G.input.mdx, ui:G.ui.open, wheel:G.ui.wheelOn, alive:P.alive, hp:P.hp, dt:G._dt };
+  if (window.__showErr && (G.nanCount = (G.nanCount || 0) + 1) <= 3) window.__showErr('NaN: ' + bad.join(',') + ' | ' + JSON.stringify(info, (k, v)=>typeof v === 'number' ? Math.round(v*1000)/1000 : v));
+  P.aimK = 0; P.stamina = 1; P.firing = 0; P.punchT = 0; P.rolling = 0; C.lastInput = 0; G.slowmo = 1; G.input.mdx = G.input.mdy = 0;
   G.nanLog = (G.nanLog || []).concat(bad.join(',')).slice(-10);
   if (SAFE.x === undefined){ const s = G.world.specials.find(s=>s.type === 'safe'); SAFE.x = s.x; SAFE.y = 0.15; SAFE.z = s.z + 6; SAFE.h = 0; SAFE.yaw = Math.PI; SAFE.pitch = .2; SAFE.cx = SAFE.x; SAFE.cy = 2; SAFE.cz = SAFE.z - 4; }
   P.x = SAFE.x; P.y = SAFE.y; P.z = SAFE.z; P.h = SAFE.h; P.vx = P.vy = P.vz = 0; C.yaw = SAFE.yaw; C.pitch = SAFE.pitch; C.x = SAFE.cx; C.y = SAFE.cy; C.z = SAFE.cz; C.kick = 0; C.shake = 0; if (!isFinite(C.fov)) C.fov = G.cfg.fov = 62;
@@ -117,5 +121,5 @@ function tick(dt){
 }
 G.tick = (n, dt)=>{ for (let i = 0; i < n; i++){ tick(dt || 1/30); G.input.endFrame(); } };
 addEventListener('beforeunload', ()=>{ G.save.armor = G.player.armor; G.writeSave(); });
-boot().catch(e=>{ console.error(e); $('ltip').textContent = '오류: ' + e.message; });
+boot().catch(e=>{ console.error(e); $('ltip').textContent = '오류: ' + e.message; if (window.__showErr) window.__showErr('boot: ' + (e.stack || e.message).split('\n').slice(0, 3).join(' | ')); });
 })();

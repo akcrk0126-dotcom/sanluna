@@ -165,7 +165,6 @@
 </style>
 </head>
 <body>
-<div id="tabbar" hidden></div><!-- PlayHub 공용 메뉴 버튼은 이 게임에서 안 씀 -->
 <!-- 로딩 -->
 <div id="load">
   <div class="sub">OPEN WORLD</div>
@@ -231,12 +230,15 @@
 <!-- 상점 -->
 <div class="pane" id="shop"><div class="box"><div class="hd"><h2 id="shopT"></h2><span class="money" id="shopM"></span><button class="x" data-close><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div class="list" id="shopL"></div></div></div>
 
+<div id="errbox" style="display:none;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99;max-width:min(760px,94vw);background:#3a0a0a;border:2px solid #ff5a4a;color:#fff;padding:10px 14px;border-radius:8px;font:13px/1.5 monospace;white-space:pre-wrap;word-break:break-all;cursor:pointer" title="클릭하면 닫혀요"></div>
+<script>
+window.__errs = [];
+window.__showErr = function(msg){ try { window.__errs.push(msg); var b = document.getElementById('errbox'); b.style.display = 'block'; b.textContent = '오류 (이 화면을 캡처해서 보내 주세요)\n' + window.__errs.slice(-4).join('\n'); b.onclick = function(){ b.style.display = 'none'; }; } catch(e){} };
+window.addEventListener('error', function(e){ window.__showErr((e.message || e) + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno + ':' + e.colno); });
+window.addEventListener('unhandledrejection', function(e){ window.__showErr('promise: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason)); });
+</script>
 <script src="lib/three.r128.min.js"></script>
 <script src="gta/libs.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" crossorigin="anonymous" onerror="window.__mpFail=true"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js" crossorigin="anonymous" onerror="window.__mpFail=true"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js" crossorigin="anonymous" onerror="window.__mpFail=true"></script>
-<script src="multiplayer.js" onerror="window.__mpFail=true"></script>
 <script src="gta/core.js"></script>
 <script src="gta/human.js"></script>
 <script src="gta/world.js"></script>

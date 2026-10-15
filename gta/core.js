@@ -43,7 +43,7 @@ addEventListener('keydown', e=>{
 });
 addEventListener('keyup', e=>{ I.keys[e.code] = false; });
 addEventListener('blur', ()=>{ I.keys = {}; I.mouseL = I.mouseR = false; });
-addEventListener('mousemove', e=>{ if (I.locked){ I.mdx += e.movementX; I.mdy += e.movementY; } });
+addEventListener('mousemove', e=>{ if (I.locked && isFinite(e.movementX) && isFinite(e.movementY) && Math.abs(e.movementX) < 800 && Math.abs(e.movementY) < 800){ I.mdx += e.movementX; I.mdy += e.movementY; } });
 addEventListener('mousedown', e=>{ if (!I.locked) return; if (e.button === 0){ I.mouseL = true; I.pressed.Mouse0 = true; } if (e.button === 2){ I.mouseR = true; I.pressed.Mouse2 = true; } });
 addEventListener('mouseup', e=>{ if (e.button === 0) I.mouseL = false; if (e.button === 2) I.mouseR = false; });
 addEventListener('contextmenu', e=>e.preventDefault());

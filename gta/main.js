@@ -61,7 +61,7 @@ let last = 0, saveT = 30, fpsT = 0, frames = 0;
 G.slowmo = 1;
 function loop(now){
   requestAnimationFrame(loop);
-  let dt = Math.min(.05, (now - last)/1000); last = now;
+  let dt = Math.max(0, Math.min(.05, (now - last)/1000 || 0)); last = now;
   // FPS 가 너무 낮으면 픽셀 비율을 낮춤
   frames++; fpsT += dt; if (fpsT > 3){ const fps = frames/fpsT; frames = 0; fpsT = 0; if (fps < 26 && G.renderer.getPixelRatio() > .6){ G.renderer.setPixelRatio(Math.max(.6, G.renderer.getPixelRatio() - .15)); if (G.env.comp) G.env.comp.setSize(innerWidth, innerHeight); } }
   if (G.slowmoT > 0){ G.slowmoT -= dt; dt *= .35; }
@@ -69,6 +69,7 @@ function loop(now){
   const I = G.input;
   if (G.ui.wheelOn){ G.ui.wheelMouse(I.mdx, I.mdy); I.mdx = I.mdy = 0; }
   tick(dt);
+  guard();
   G.ui.update(dt);
   I.endFrame();
   G.env.render();
@@ -76,6 +77,19 @@ function loop(now){
   if (G.started && whiteChecks < 12 && now - whiteT > 1200){ whiteT = now; whiteChecks++; const b = G.env.checkWhite(); if (b > .9){ const L = G.env.safer(); console.warn('[SAN LUNA] 화면이 너무 밝음', b.toFixed(2), '→ 안전 모드', L); if (L <= 4) G.ui.feed('화면이 너무 밝아서 그래픽 효과를 줄였어요 (' + L + '단계)'); whiteChecks = Math.min(whiteChecks, 6); } }
 }
 let whiteChecks = 0, whiteT = 0;
+// 숫자가 깨지면(NaN) 마지막 정상 상태로 되돌림 — 화면이 하얗게 되는 걸 막고, 어디서 깨졌는지 기록
+const SAFE = {}; let guardMsg = 0;
+function guard(){ const P = G.player, C = P.cam; const f = { 'P.x':P.x, 'P.y':P.y, 'P.z':P.z, 'P.vx':P.vx, 'P.vy':P.vy, 'P.vz':P.vz, 'P.h':P.h, 'C.yaw':C.yaw, 'C.pitch':C.pitch, 'C.x':C.x, 'C.y':C.y, 'C.z':C.z, 'C.fov':C.fov };
+  if (P.car){ Object.assign(f, { 'car.x':P.car.x, 'car.y':P.car.y, 'car.z':P.car.z, 'car.h':P.car.h, 'car.vx':P.car.vx, 'car.vz':P.car.vz, 'car.w':P.car.w }); }
+  const bad = Object.keys(f).filter(k=>!isFinite(f[k]));
+  if (!bad.length){ Object.assign(SAFE, { x:P.x, y:P.y, z:P.z, h:P.h, yaw:C.yaw, pitch:C.pitch, cx:C.x, cy:C.y, cz:C.z }); if (P.car) SAFE.car = { v:P.car, x:P.car.x, y:P.car.y, z:P.car.z, h:P.car.h }; return; }
+  console.warn('[SAN LUNA] NaN 복구', bad.join(','), JSON.stringify(f));
+  G.nanLog = (G.nanLog || []).concat(bad.join(',')).slice(-10);
+  if (SAFE.x === undefined){ const s = G.world.specials.find(s=>s.type === 'safe'); SAFE.x = s.x; SAFE.y = 0.15; SAFE.z = s.z + 6; SAFE.h = 0; SAFE.yaw = Math.PI; SAFE.pitch = .2; SAFE.cx = SAFE.x; SAFE.cy = 2; SAFE.cz = SAFE.z - 4; }
+  P.x = SAFE.x; P.y = SAFE.y; P.z = SAFE.z; P.h = SAFE.h; P.vx = P.vy = P.vz = 0; C.yaw = SAFE.yaw; C.pitch = SAFE.pitch; C.x = SAFE.cx; C.y = SAFE.cy; C.z = SAFE.cz; C.kick = 0; C.shake = 0; if (!isFinite(C.fov)) C.fov = G.cfg.fov = 62;
+  if (P.car){ const v = P.car; if (SAFE.car && SAFE.car.v === v){ v.x = SAFE.car.x; v.y = SAFE.car.y; v.z = SAFE.car.z; v.h = SAFE.car.h; } else { v.x = P.x; v.z = P.z; v.y = .2; v.h = 0; } v.vx = v.vz = v.vy = v.w = 0; v.steerA = 0; v.pitch = v.roll = v.susp = v.suspV = 0; v.lastVF = 0; }
+  for (const k of ['sens', 'fov', 'vol', 'radioVol']) if (!isFinite(G.cfg[k])) G.cfg[k] = { sens:1, fov:62, vol:.8, radioVol:.6 }[k];
+  if (performance.now() - guardMsg > 5000){ guardMsg = performance.now(); G.ui.feed('오류 복구: ' + bad.join(', ')); } }
 // 게임 한 단계 (렌더 없이도 돌릴 수 있게 분리)
 function tick(dt){
   if (!G.paused){

@@ -180,6 +180,7 @@ const _t = new THREE.Vector3();
 function updateCam(dt){
   const sens = .0023*G.cfg.sens; let inX = I.mdx*sens + I.look.dx*.006*G.cfg.sens, inY = I.mdy*sens*(G.cfg.invertY ? -1 : 1) + I.look.dy*.005*G.cfg.sens;
   if (PL.aimK > .5){ inX *= .6; inY *= .6; } if (PL.scope){ inX *= .25; inY *= .25; }
+  if (!isFinite(inX)) inX = 0; if (!isFinite(inY)) inY = 0;
   CAM.yaw -= inX; CAM.pitch = U.clamp(CAM.pitch + inY, -1.2, 1.25);
   if (Math.abs(inX) + Math.abs(inY) > .0005) CAM.lastInput = 0; else CAM.lastInput += dt;
   if (CAM.kick > 0){ CAM.pitch += CAM.kick*.5; CAM.kick *= Math.exp(-14*dt); if (CAM.kick < .001) CAM.kick = 0; }

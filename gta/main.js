@@ -72,7 +72,10 @@ function loop(now){
   G.ui.update(dt);
   I.endFrame();
   G.env.render();
+  // 처음 몇 초 동안 화면이 하얗게 날아가는지 확인
+  if (G.started && whiteChecks < 12 && now - whiteT > 1200){ whiteT = now; whiteChecks++; const b = G.env.checkWhite(); if (b > .9){ const L = G.env.safer(); console.warn('[SAN LUNA] 화면이 너무 밝음', b.toFixed(2), '→ 안전 모드', L); if (L <= 4) G.ui.feed('화면이 너무 밝아서 그래픽 효과를 줄였어요 (' + L + '단계)'); whiteChecks = Math.min(whiteChecks, 6); } }
 }
+let whiteChecks = 0, whiteT = 0;
 // 게임 한 단계 (렌더 없이도 돌릴 수 있게 분리)
 function tick(dt){
   if (!G.paused){

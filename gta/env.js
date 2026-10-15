@@ -93,13 +93,13 @@ E.update = (dt, camPos)=>{
   E.sun.color.setRGB(1, .93 - sunset*.3, .85 - sunset*.5); if (sy <= -.05) E.sun.color.setRGB(.6, .7, 1);
   E.hemi.intensity = (.2 + .42*dayK)*(1 - E.w.rain*.2); E.hemi.color.setRGB(.55 + .25*dayK, .62 + .25*dayK, .85 + .1*dayK);
   if (E.dayK < .01) E.hemi.intensity = .2;
-  G.renderer.toneMappingExposure = .88 + E.night*.5;
+  G.renderer.toneMappingExposure = (.88 + E.night*.5)*(E.expK || 1)*(G.cfg.bright || 1);
   // 그림자 카메라를 플레이어 주변으로
   E.sun.position.copy(camPos).addScaledVector(lightDir, 300); E.sun.target.position.copy(camPos); E.sun.target.updateMatrixWorld();
   const sc = E.sun.shadow.camera; // 텍셀 단위로 맞춰 떨림 방지
   // 안개
   const fc = FOGD.clone().lerp(FOGS, sunset*.5).lerp(FOGN, E.night).lerp(FOGR.clone().multiplyScalar(.3 + .7*dayK), E.w.rain*.7);
-  G.scene.fog.color.copy(fc); G.scene.fog.density = .0009 + E.w.fog*.0045 + E.w.rain*.0012 + E.night*.0002;
+  G.scene.fog.color.copy(fc); if (!E.noFog) G.scene.fog.density = .0009 + E.w.fog*.0045 + E.w.rain*.0012 + E.night*.0002;
   // 하늘
   const su = E.skyMat.uniforms; su.uT.value += dt; su.dayK.value = dayK; su.cloud.value = E.w.cloud; su.rain.value = E.w.rain; E.sky.position.copy(camPos);
   // 번개
@@ -112,7 +112,7 @@ E.update = (dt, camPos)=>{
   if (E.bloom){ E.bloom.strength = .15 + E.night*.45; E.bloom.threshold = .95 - E.night*.2; }
   // 환경맵 (반사) — 가끔만 다시 굽기
   const key = Math.round(E.hour*4) + Math.round(E.w.rain*4)*100;
-  if (key !== E.envLast && G.renderer.capabilities.isWebGL2){ /* WebGL1 기기는 PMREM 이 깨져서 화면이 하얘질 수 있음 */ E.envLast = key; const old = E.envRT; E.envRT = E.pmrem.fromEquirectangular(envTex(dayK, sunset, E.w.rain)); G.scene.environment = E.envRT.texture; if (old) setTimeout(()=>old.dispose(), 100); }
+  if (key !== E.envLast && G.renderer.capabilities.isWebGL2 && !E.noEnv){ /* WebGL1 기기는 PMREM 이 깨져서 화면이 하얘질 수 있음 */ E.envLast = key; const old = E.envRT; E.envRT = E.pmrem.fromEquirectangular(envTex(dayK, sunset, E.w.rain)); G.scene.environment = E.envRT.texture; if (old) setTimeout(()=>old.dispose(), 100); }
 };
 // 반사용 하늘 그림 (정거리 원통 투영)
 let envCv = null, envT = null;
@@ -125,6 +125,17 @@ function envTex(dayK, sunset, rain){
   // 건물 실루엣 느낌 (반사가 너무 하늘만 보이지 않게)
 
   envT.needsUpdate = true; return envT; }
-E.render = ()=>{ if (E.comp) E.comp.render(); else G.renderer.render(G.scene, G.camera); };
+E.render = ()=>{ if (E.comp && !E.noComp) E.comp.render(); else G.renderer.render(G.scene, G.camera); };
+// 화면이 하얗게 날아가는 기기 대응: 그린 직후 화면을 몇 군데 읽어서 거의 흰색이면 효과를 하나씩 끔
+E.safeLevel = 0;
+E.checkWhite = ()=>{ const gl = G.renderer.getContext(); const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight; const px = new Uint8Array(4); let sum = 0, n = 0;
+  for (let i = 1; i < 6; i++) for (let j = 1; j < 5; j++){ gl.readPixels(Math.floor(w*i/6), Math.floor(h*j/5), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); sum += (px[0] + px[1] + px[2])/765; n++; }
+  return sum/n; };
+E.safer = ()=>{ E.safeLevel++; const L = E.safeLevel;
+  if (L === 1){ E.noComp = true; }
+  else if (L === 2){ E.noEnv = true; G.scene.environment = null; }
+  else if (L === 3){ G.renderer.toneMappingExposure = .6; E.expK = .6; G.scene.fog.density = 0; E.noFog = true; }
+  else if (L === 4){ G.renderer.toneMapping = THREE.LinearToneMapping; G.scene.traverse(o=>{ if (o.material) [].concat(o.material).forEach(m=>m.needsUpdate = true); }); }
+  return L; };
 E.clock = ()=>{ const h = Math.floor(E.hour), m = Math.floor((E.hour - h)*60); return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m; };
 })();
